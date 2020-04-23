@@ -60,9 +60,9 @@
         <timestamp>${maven.build.timestamp}</timestamp>
         <maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
 
-        <scala.major.version>2.11</scala.major.version>
-        <scala.version>2.11.12</scala.version>
-        <scala.compat.version>2.11</scala.compat.version>
+        <scala.major.version>2.12</scala.major.version>
+        <scala.version>2.12.6</scala.version>
+        <scala.compat.version>2.12</scala.compat.version>
         <scalatest.version>3.0.5</scalatest.version>
         <scala.logging.version>3.9.0</scala.logging.version>
 
@@ -93,6 +93,41 @@
     </repositories>
 
     <dependencies>
+
+        <!-- https://mvnrepository.com/artifact/com.lihaoyi/scalatags -->
+        <dependency>
+            <groupId>com.lihaoyi</groupId>
+            <artifactId>scalatags_${scala.compat.version}</artifactId>
+            <version>0.9.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.roundeights</groupId>
+            <artifactId>hasher_${scala.compat.version}</artifactId>
+            <version>1.2.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-core_${scala.major.version}</artifactId>
+            <version>3.6.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-jackson_${scala.major.version}</artifactId>
+            <version>3.6.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.json4s</groupId>
+            <artifactId>json4s-ext_${scala.compat.version}</artifactId>
+            <version>3.6.0</version>
+        </dependency>
 
         <dependency>
             <groupId>io.monix</groupId>
