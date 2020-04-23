@@ -90,58 +90,63 @@ object Service extends AutoCloseable {
 
       report.neoserver = neoUri
       report.neouser = neoUser
+      report.msgpackurl = msgpackurl
+      report.jsonurl = jsonurl
 
       report.dataFound = data.size
       report.dataFiltered = grouped.size
+
       report.msgpacks = msgpacks.size
       report.jsons = jsons.size
 
       logger.info("state={}, \n total_keys_found={} \n filtered_keys={} \n msg_packs={} \n jsons={}", "KeyTyping", report.dataFound, report.dataFiltered, report.msgpacks, report.jsons)
-
       logger.info("state={}", "Creating")
 
       msgpackPosts.foreach { case (pk, r) =>
         try {
           val res = client.execute(r)
           val status = res.getStatusLine
-          val body = EntityUtils.toString(res.getEntity)
-          report.msgpacksProcessed += ((status.getStatusCode.toString, pk.pubKeyInfo.hwDeviceId, body))
+          val resBody = EntityUtils.toString(res.getEntity)
+          report.msgpacksProcessed += ((status.getStatusCode.toString, pk.pubKeyInfo.hwDeviceId, resBody, pk.raw.get))
           if(status.getStatusCode > 200)
             report.msgpacksProcessedNotOK = report.msgpacksProcessedNotOK + 1
           else
             report.msgpacksProcessedOK = report.msgpacksProcessedOK + 1
-          logger.info("\n status={} \n hardwareId={} \n body={}", status, pk.pubKeyInfo.hwDeviceId, body)
+          logger.info("\n status={} \n hardwareId={} \n response_body={} \n body={}", status, pk.pubKeyInfo.hwDeviceId, resBody, pk.raw.get)
         } catch {
           case e: Exception =>
-            report.msgpacksProcessed += (("-", pk.pubKeyInfo.hwDeviceId, e.getMessage))
+            report.msgpacksProcessed += (("-", pk.pubKeyInfo.hwDeviceId, e.getMessage, pk.raw.get))
             report.msgpacksProcessedNotOK = report.msgpacksProcessedNotOK + 1
             logger.error("hardwareId={} ex={}", pk.pubKeyInfo.hwDeviceId, e.getMessage)
         }
       }
 
+
       ///json
+
       val jsonPosts = jsons.map { case (_, publicKey) =>
         val request = new HttpPost(jsonurl)
         request.setHeader("Content-Type", "application/json")
         val body = stringify(toJValue(publicKey))
         request.setEntity(new StringEntity(body))
-        (publicKey, request)
+        (publicKey, body, request)
       }
 
-      jsonPosts.foreach { case (pk, r) =>
+      jsonPosts.foreach { case (pk, body, r) =>
         try {
           val res = client.execute(r)
           val status = res.getStatusLine
-          val body = EntityUtils.toString(res.getEntity)
-          report.jsonsProcessed += ((status.getStatusCode.toString, pk.pubKeyInfo.hwDeviceId, body))
+          val resBody = EntityUtils.toString(res.getEntity)
+          report.jsonsProcessed += ((status.getStatusCode.toString, pk.pubKeyInfo.hwDeviceId, resBody, body))
           if(status.getStatusCode > 200)
             report.jsonsProcessedNotOK = report.jsonsProcessedNotOK + 1
           else
             report.jsonsProcessedOK = report.jsonsProcessedOK + 1
-          logger.info("\n status={} \n hardwareId={} \n body={}", status, pk.pubKeyInfo.hwDeviceId, body)
+
+          logger.info("\n status={} \n hardwareId={} \n response_body={} \n body={}", status, pk.pubKeyInfo.hwDeviceId, resBody, body)
         } catch {
           case e: Exception =>
-            report.jsonsProcessed += (("-", pk.pubKeyInfo.hwDeviceId, e.getMessage))
+            report.jsonsProcessed += (("-", pk.pubKeyInfo.hwDeviceId, e.getMessage, body))
             report.jsonsProcessedOK = report.jsonsProcessedNotOK + 1
             logger.error("hardwareId={} ex={}", pk.pubKeyInfo.hwDeviceId, e.getMessage)
         }

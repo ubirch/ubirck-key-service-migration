@@ -8,19 +8,19 @@ class Report {
   var neoserver = ""
   var neouser = ""
 
-  val msgpackurl = ""
-  val jsonurl = ""
+  var msgpackurl = ""
+  var jsonurl = ""
 
   var msgpacks = 0
   var jsons = 0
   var dataFound = 0
   var dataFiltered = 0
 
-  val msgpacksProcessed = scala.collection.mutable.ListBuffer.empty[(String, String, String)]
+  val msgpacksProcessed = scala.collection.mutable.ListBuffer.empty[(String, String, String, String)]
   var msgpacksProcessedOK = 0
   var msgpacksProcessedNotOK = 0
 
-  val jsonsProcessed = scala.collection.mutable.ListBuffer.empty[(String, String, String)]
+  val jsonsProcessed = scala.collection.mutable.ListBuffer.empty[(String, String, String, String)]
   var jsonsProcessedOK = 0
   var jsonsProcessedNotOK = 0
 
@@ -38,13 +38,13 @@ class Report {
         ),
         table(
           caption("msgpacks"),
-          tr(th("status"), th("hardwareid"), th("data")),
-          msgpacksProcessed.map{ case (status, hardwareId, data) => tr(td(status), td(hardwareId), td(data)) }
+          tr(th("status"), th("hardwareid"), th("response"), th("sent body")),
+          msgpacksProcessed.map{ case (status, hardwareId, response, body) => tr(td(status), td(hardwareId), td(response), td(body)) }
         ),
         table(
           caption("json"),
-          tr(th("status"), th("hardwareid"), th("data")),
-          jsonsProcessed.map{ case (status, hardwareId, data) => tr(td(status), td(hardwareId), td(data)) }
+          tr(th("status"), th("hardwareid"), th("response"), th("sent body")),
+          jsonsProcessed.map{ case (status, hardwareId, response, body) => tr(td(status), td(hardwareId), td(response), td(body)) }
         )
       )
     )
