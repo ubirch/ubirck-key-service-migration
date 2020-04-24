@@ -47,6 +47,10 @@ If all goes well, we should be able to start the tool.
 ```shell
   java -cp target/key_exporter-0.5.jar com.ubirch.Service 
 ```
+
+Of course, you can also run the system from your IDE. Just don't forget to put the env vars before running the system.
+Another way of running it is by modifying the _application.conf_.
+
 3- `Check reports`:
 
 After having run the tool you should see two reports per run. An executive report (summary) and a detailed report 
