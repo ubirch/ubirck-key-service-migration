@@ -27,8 +27,37 @@ class Report {
 
   def executive = {
 
-    val titleData = List("neo server", "neo user", "msgpack url", "msgpack url", "data found", "filtered keys", "msgpacks", "jsons", "msgpacks Processed OK", "msgpacks Processed Not OK", "jsons Processed OK", "jsons Processed Not OK").mkString(sep) + ret
-    val data = List(neoserver, neouser, msgpackurl, jsonurl, dataFound, dataFiltered, msgpacks, jsons, msgpacksProcessedOK, msgpacksProcessedNotOK, jsonsProcessedOK, jsonsProcessedNotOK).mkString(sep) + ret
+    val titleData = List(
+      "neo server",
+      "neo user",
+      "msgpack url",
+      "msgpack url",
+      "data found",
+      "filtered keys",
+      "msgpacks",
+      "jsons",
+      "msgpacks Processed OK",
+      "msgpacks Processed Not OK",
+      "jsons Processed OK",
+      "jsons Processed Not OK",
+      "total OK",
+      "total Not OK").mkString(sep) + ret
+    val data = List(
+      neoserver,
+      neouser,
+      msgpackurl,
+      jsonurl,
+      dataFound,
+      dataFiltered,
+      msgpacks,
+      jsons,
+      msgpacksProcessedOK,
+      msgpacksProcessedNotOK,
+      jsonsProcessedOK,
+      jsonsProcessedNotOK,
+      msgpacksProcessedOK + jsonsProcessedOK,
+      msgpacksProcessedNotOK + jsonsProcessedNotOK
+    ).mkString(sep) + ret
     titleData + data
 
   }
