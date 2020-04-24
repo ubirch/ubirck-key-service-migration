@@ -1,53 +1,56 @@
 package com.ubirch
 
-import java.io.{File, PrintWriter}
+import java.io.{ File, PrintWriter }
+import java.util.UUID
 
 import com.typesafe.config.ConfigFactory
 import com.typesafe.scalalogging.Logger
-import com.ubirch.Service.config
 import org.apache.commons.codec.binary.Hex
 import org.apache.http.client.HttpClient
 import org.apache.http.client.methods.HttpPost
-import org.apache.http.entity.{ByteArrayEntity, StringEntity}
+import org.apache.http.entity.{ ByteArrayEntity, StringEntity }
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
+import org.joda.time.{ DateTime, DateTimeZone }
 import org.neo4j.driver.v1._
 
 import scala.collection.JavaConverters._
 
-object Service extends AutoCloseable {
+object Service {
 
   @transient
   protected lazy val logger: Logger = Logger("com.ubirch.Key_Exporter")
 
-  val config = ConfigFactory.load()
-
-  private var driver: Driver = _
-
-  override def close(): Unit = {
-    logger.info("Closing connection")
-    if (driver != null) driver.close()
-  }
-
-  var report: Report = _
+  private val config = ConfigFactory.load()
 
   def main(args: Array[String]): Unit = {
 
+    var driver: Driver = null
+    var report: Report = null
+    var client: HttpClient = null
+
     try {
-
-      report = new Report
-
-      logger.info("state={}", "Connecting")
 
       val neoUri = config.getString("neo4j.uri")
       val neoUser = config.getString("neo4j.username")
+      val msgpackurl = config.getString("msgpackurl")
+      val jsonurl = config.getString("jsonurl")
+      val reportFile = config.getString("reportFile")
 
+      report = new Report
+      client = HttpClients.createMinimal()
       driver = GraphDatabase.driver(neoUri, AuthTokens.basic(neoUser, config.getString("neo4j.pass")))
 
+      report.reportFile = reportFile
+      report.neoserver = neoUri
+      report.neouser = neoUser
+      report.msgpackurl = msgpackurl
+      report.jsonurl = jsonurl
+
+      logger.info("msgpackurl={} jsonurl={}", report.msgpackurl, report.jsonurl)
+
       val session = driver.session()
-
-      logger.info("state={}", "Querying")
-
+      //Querying
       val data = session.readTransaction(new TransactionWork[List[PublicKey]] {
         override def execute(transaction: Transaction): List[PublicKey] = {
 
@@ -61,8 +64,7 @@ object Service extends AutoCloseable {
         }
       })
 
-      logger.info("state={}", "Grouping")
-
+      //Grouping and filtering
       val grouped = data
         .groupBy(_.pubKeyInfo.hwDeviceId)
         .mapValues { vs =>
@@ -71,15 +73,8 @@ object Service extends AutoCloseable {
           }
         }.mapValues(_.headOption.getOrElse(throw new Exception("Device Found with no Key!")))
 
-      val msgpacks = grouped.filter{ case (_, b) => b.raw.isDefined }
+      val msgpacks = grouped.filter { case (_, b) => b.raw.isDefined }
       val jsons = grouped.filter { case (_, b) => b.raw.isEmpty }
-
-      val client: HttpClient = HttpClients.createMinimal()
-
-      val msgpackurl = config.getString("msgpackurl")
-      val jsonurl = config.getString("jsonurl")
-
-      logger.info("msgpackurl={} jsonurl={}", msgpackurl, jsonurl)
 
       val msgpackPosts = msgpacks.map { case (_, publicKey) =>
         val request = new HttpPost(msgpackurl)
@@ -88,19 +83,14 @@ object Service extends AutoCloseable {
         (publicKey, request)
       }
 
-      report.neoserver = neoUri
-      report.neouser = neoUser
-      report.msgpackurl = msgpackurl
-      report.jsonurl = jsonurl
-
       report.dataFound = data.size
       report.dataFiltered = grouped.size
-
       report.msgpacks = msgpacks.size
       report.jsons = jsons.size
 
-      logger.info("state={}, \n total_keys_found={} \n filtered_keys={} \n msg_packs={} \n jsons={}", "KeyTyping", report.dataFound, report.dataFiltered, report.msgpacks, report.jsons)
-      logger.info("state={}", "Creating")
+      logger.info("state={}, total_keys_found={} filtered_keys={} msg_packs={} jsons={}", "KeyTyping", report.dataFound, report.dataFiltered, report.msgpacks, report.jsons)
+
+      // Posting msgpacks
 
       msgpackPosts.foreach { case (pk, r) =>
         try {
@@ -108,11 +98,12 @@ object Service extends AutoCloseable {
           val status = res.getStatusLine
           val resBody = EntityUtils.toString(res.getEntity)
           report.msgpacksProcessed += ((status.getStatusCode.toString, pk.pubKeyInfo.hwDeviceId, resBody, pk.raw.get))
-          if(status.getStatusCode > 200)
+          if (status.getStatusCode > 200)
             report.msgpacksProcessedNotOK = report.msgpacksProcessedNotOK + 1
           else
             report.msgpacksProcessedOK = report.msgpacksProcessedOK + 1
-          logger.info("\n status={} \n hardwareId={} \n response_body={} \n body={}", status, pk.pubKeyInfo.hwDeviceId, resBody, pk.raw.get)
+
+          logger.info("status={} hardwareId={} response_body={} body={}", status, pk.pubKeyInfo.hwDeviceId, resBody, pk.raw.get)
         } catch {
           case e: Exception =>
             report.msgpacksProcessed += (("-", pk.pubKeyInfo.hwDeviceId, e.getMessage, pk.raw.get))
@@ -121,8 +112,7 @@ object Service extends AutoCloseable {
         }
       }
 
-
-      ///json
+      /// Posting json
 
       val jsonPosts = jsons.map { case (_, publicKey) =>
         val request = new HttpPost(jsonurl)
@@ -138,12 +128,12 @@ object Service extends AutoCloseable {
           val status = res.getStatusLine
           val resBody = EntityUtils.toString(res.getEntity)
           report.jsonsProcessed += ((status.getStatusCode.toString, pk.pubKeyInfo.hwDeviceId, resBody, body))
-          if(status.getStatusCode > 200)
+          if (status.getStatusCode > 200)
             report.jsonsProcessedNotOK = report.jsonsProcessedNotOK + 1
           else
             report.jsonsProcessedOK = report.jsonsProcessedOK + 1
 
-          logger.info("\n status={} \n hardwareId={} \n response_body={} \n body={}", status, pk.pubKeyInfo.hwDeviceId, resBody, body)
+          logger.info("status={} hardwareId={} response_body={} body={}", status, pk.pubKeyInfo.hwDeviceId, resBody, body)
         } catch {
           case e: Exception =>
             report.jsonsProcessed += (("-", pk.pubKeyInfo.hwDeviceId, e.getMessage, body))
@@ -157,12 +147,26 @@ object Service extends AutoCloseable {
         logger.error("Error while setting up neo4j connection", e)
         throw e
     } finally {
-      if (driver != null) driver.close()
       if (report != null) {
-        val pw = new PrintWriter(new File("hello.html" ))
-        pw.write(report.all.toString())
-        pw.close
+        val date = DateTime.now(DateTimeZone.UTC)
+        val id = UUID.randomUUID()
+        val resultsFile = report.reportFile + "_" + id + "_" + date.toString() + ".results.csv"
+        logger.info("Creating report:" + resultsFile)
+        val pw = new PrintWriter(new File(resultsFile))
+        pw.write(report.dataProcessed)
+        pw.close()
+
+        val executiveFile = report.reportFile + "_" + id + "_" + date.toString() + ".summary.csv"
+        logger.info("Creating report:" + executiveFile)
+        val pwe = new PrintWriter(new File(executiveFile))
+        pwe.write(report.executive)
+        pwe.close()
       }
+      if (driver != null) {
+        logger.info("Closing connection")
+        driver.close()
+      }
+      logger.info("Process Finished")
     }
 
   }

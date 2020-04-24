@@ -1,7 +1,7 @@
 package com
 
-import org.json4s.{Extraction, Formats, JValue, NoTypeHints, jackson}
 import org.json4s.jackson.Serialization
+import org.json4s.{ Extraction, Formats, JValue, NoTypeHints, jackson }
 
 package object ubirch {
 

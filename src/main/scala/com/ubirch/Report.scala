@@ -1,10 +1,8 @@
 package com.ubirch
 
-import scalatags.Text.all.{h2, _}
-
-
 class Report {
 
+  var reportFile = ""
   var neoserver = ""
   var neouser = ""
 
@@ -24,30 +22,22 @@ class Report {
   var jsonsProcessedOK = 0
   var jsonsProcessedNotOK = 0
 
-  def all = {
-    html(
-      body(
-        h1("Key Migration"),
-        h2("Neo server=" +  neoserver),
-        h2("Neo user=" + neouser),
-        h2("Key server (msgpack) =" + msgpackurl),
-        h2("Key server (json) =" + jsonurl),
-        table(
-          tr(th("data found"), th("filtered keys"), th("msgpacks"), th("jsons"), th("msgpacksProcessedOK"), th("msgpacksProcessedNotOK"), th("jsonsProcessedOK"), th("jsonsProcessedNotOK")),
-          tr(td(dataFound), td(dataFiltered), td(msgpacks), td(jsons), th(msgpacksProcessedOK), th(msgpacksProcessedNotOK), th(jsonsProcessedOK), th(jsonsProcessedNotOK))
-        ),
-        table(
-          caption("msgpacks"),
-          tr(th("status"), th("hardwareid"), th("response"), th("sent body")),
-          msgpacksProcessed.map{ case (status, hardwareId, response, body) => tr(td(status), td(hardwareId), td(response), td(body)) }
-        ),
-        table(
-          caption("json"),
-          tr(th("status"), th("hardwareid"), th("response"), th("sent body")),
-          jsonsProcessed.map{ case (status, hardwareId, response, body) => tr(td(status), td(hardwareId), td(response), td(body)) }
-        )
-      )
-    )
+  val ret = "\n"
+  val sep = ";"
+
+  def executive = {
+
+    val titleData = List("neo server", "neo user", "msgpack url", "msgpack url", "data found", "filtered keys", "msgpacks", "jsons", "msgpacks Processed OK", "msgpacks Processed Not OK", "jsons Processed OK", "jsons Processed Not OK").mkString(sep) + ret
+    val data = List(neoserver, neouser, msgpackurl, jsonurl, dataFound, dataFiltered, msgpacks, jsons, msgpacksProcessedOK, msgpacksProcessedNotOK, jsonsProcessedOK, jsonsProcessedNotOK).mkString(sep) + ret
+    titleData + data
+
+  }
+
+  def dataProcessed = {
+    val titleResults = List("status", "hardwareId", "response", "sent body").mkString(sep) + ret
+    val mgs = msgpacksProcessed.map { case (status, hardwareId, response, body) => List(status, hardwareId, response, body).mkString(sep) }.mkString(ret)
+    val jss = jsonsProcessed.map { case (status, hardwareId, response, body) => List(status, hardwareId, response, body).mkString(sep) }.mkString(ret)
+    titleResults + mgs + jss
   }
 
 }
